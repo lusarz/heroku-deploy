@@ -64,7 +64,6 @@ const createProcfile = ({ procfile, appdir }) => {
 };
 
 const deploy = ({
-  dontuseforce,
   app_name,
   branch,
   usedocker,
@@ -72,7 +71,6 @@ const deploy = ({
   dockerBuildArgs,
   appdir,
 }) => {
-  const force = !dontuseforce ? "--force" : "";
   if (usedocker) {
     execSync(
       `heroku container:push ${dockerHerokuProcessType} --app ${app_name} ${dockerBuildArgs}`,
@@ -95,12 +93,12 @@ const deploy = ({
     }
 
     if (appdir === "") {
-      execSync(`git push heroku ${branch}:refs/heads/main ${force}`, {
+      execSync(`git push heroku ${branch}:refs/heads/main --force`, {
         maxBuffer: 104857600,
       });
     } else {
       execSync(
-        `git push ${force} heroku \`git subtree split --prefix=${appdir} ${branch}\`:refs/heads/main`,
+        `git push --force heroku \`git subtree split --prefix=${appdir} ${branch}\`:refs/heads/main`,
         { maxBuffer: 104857600 }
       );
     }
@@ -134,7 +132,6 @@ let heroku = {
   app_name: core.getInput("heroku_app_name"),
   buildpack: core.getInput("buildpack"),
   branch: core.getInput("branch"),
-  dontuseforce: core.getInput("dontuseforce") === "false" ? false : true,
   dontautocreate: core.getInput("dontautocreate") === "false" ? false : true,
   usedocker: core.getInput("usedocker") === "false" ? false : true,
   dockerHerokuProcessType: core.getInput("docker_heroku_process_type"),
@@ -221,15 +218,9 @@ if (heroku.dockerBuildArgs) {
     addConfig(heroku);
 
     try {
-      deploy({ ...heroku, dontuseforce: true });
+      deploy({ ...heroku });
     } catch (err) {
-      console.error(`
-            Unable to push branch because the branch is behind the deployed branch. Using --force to deploy branch. 
-            (If you want to avoid this, set dontuseforce to 1 in with: of .github/workflows/action.yml. 
-            Specifically, the error was: ${err}
-        `);
-
-      deploy(heroku);
+      console.error(`Unable to push branch. The error was: ${err}`);
     }
 
     if (heroku.healthcheck) {
